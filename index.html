@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeonBeat - Minimalist music stream</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: white; }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .neon-text { text-shadow: 0 0 10px #38bdf8, 0 0 20px #38bdf8; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <nav class="p-6 flex justify-between items-center border-b border-gray-800">
+        <h1 class="text-2xl font-bold tracking-tighter neon-text">NEON<span class="text-sky-400">BEAT</span></h1>
+        <div class="flex gap-4">
+            <input id="searchInput" type="text" placeholder="Search for songs..." class="bg-gray-800 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 w-64">
+            <button onclick="searchTracks()" class="bg-sky-500 hover:bg-sky-400 px-6 py-2 rounded-full font-medium transition">Search</button>
+        </div>
+    </nav>
+
+    <main class="flex-1 p-8 container mx-auto">
+        <h2 class="text-3xl font-semibold mb-8">Today's trending topics <span class="text-gray-500 text-sm font-normal ml-2">Powered by Audius</span></h2>
+        
+        <div id="musicGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+            <p class="text-gray-400">Fetching the latest music......</p>
+        </div>
+    </main>
+
+    <footer id="playerBar" class="fixed bottom-0 w-full p-4 glass hidden">
+        <div class="container mx-auto flex items-center gap-6">
+            <img id="currentCover" src="" class="w-14 h-14 rounded-lg shadow-lg">
+            <div class="flex-1">
+                <h4 id="currentTitle" class="font-bold truncate">Song Title</h4>
+                <p id="currentArtist" class="text-sm text-gray-400">artist</p>
+            </div>
+            <audio id="audioPlayer" controls class="w-1/2"></audio>
+        </div>
+    </footer>
+
+    <script>
+        const API_BASE = "https://api.audius.co/v1";
+        const APP_NAME = "NeonBeat_Demo";
+
+        // Initializing and loading popular songs.
+        async function fetchTrending() {
+            try {
+                const res = await fetch(`${API_BASE}/tracks/trending?app_name=${APP_NAME}`);
+                const { data } = await res.json();
+                renderTracks(data);
+            } catch (err) {
+                console.error("Loading failed", err);
+            }
+        }
+
+        // Render the song list
+        function renderTracks(tracks) {
+            const grid = document.getElementById('musicGrid');
+            grid.innerHTML = tracks.map(track => `
+                <div class="glass p-4 rounded-2xl hover:scale-105 transition cursor-pointer" onclick="playTrack('${track.id}', '${track.title}', '${track.user.name}', '${track.artwork['150x150']}')">
+                    <img src="${track.artwork['150x150']}" class="w-full aspect-square object-cover rounded-xl mb-4 shadow-md">
+                    <h3 class="font-bold truncate">${track.title}</h3>
+                    <p class="text-gray-400 text-sm truncate">${track.user.name}</p>
+                </div>
+            `).join('');
+        }
+
+        // Playback logic
+        function playTrack(id, title, artist, cover) {
+            const playerBar = document.getElementById('playerBar');
+            const audio = document.getElementById('audioPlayer');
+            
+            document.getElementById('currentTitle').innerText = title;
+            document.getElementById('currentArtist').innerText = artist;
+            document.getElementById('currentCover').src = cover;
+            
+            audio.src = `${API_BASE}/tracks/${id}/stream?app_name=${APP_NAME}`;
+            playerBar.classList.remove('hidden');
+            audio.play();
+        }
+
+        // Search function
+        async function searchTracks() {
+            const query = document.getElementById('searchInput').value;
+            if(!query) return;
+            const res = await fetch(`${API_BASE}/tracks/search?query=${query}&app_name=${APP_NAME}`);
+            const { data } = await res.json();
+            renderTracks(data);
+        }
+
+        fetchTrending();
+    </script>
+</body>
+</html>
